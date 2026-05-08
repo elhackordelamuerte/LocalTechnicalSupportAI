@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙ HelpDesk AI - IT Support Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #e2e8dd;
+            --panel-bg: #e2e8dd;
+            --accent-cyan: #697268;
+            --text-main: #4e5340;
+            --text-muted: #95a3a4;
+            --user-bubble-bg: rgba(183, 209, 218, 0.2);
+            --assistant-bubble-bg: #e2e8dd;
+            --error-red: #FF4D4D;
+            
+            /* Neumorphic Tokens */
+            --neu-base: #e2e8dd;
+            --neu-shadow-dark: #c4cac0;
+            --neu-shadow-light: #ffffff;
+            --neu-radius-sm: 8px;
+            --neu-radius-md: 12px;
+            --neu-radius-lg: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Sora', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            height: calc(100vh - 40px);
+            margin: 20px;
+            border-radius: var(--neu-radius-lg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 3;
+            background: var(--neu-base);
+            box-shadow: 10px 10px 20px var(--neu-shadow-dark), -10px -10px 20px var(--neu-shadow-light); /* Outer container shadow */
+            overflow: hidden;
+        }
+
+        header {
+            padding: 24px;
+            background: var(--neu-base);
+            box-shadow: 3px 3px 6px var(--neu-shadow-dark), -3px -3px 6px var(--neu-shadow-light);
+            z-index: 10;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-text {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--accent-cyan);
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-cyan) var(--bg-color);
+        }
+
+        #chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #chat-window::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        #chat-window::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 16px 20px;
+            border-radius: var(--neu-radius-md);
+            line-height: 1.6;
+            font-size: 0.95rem;
+            animation: fadeInScale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+            position: relative;
+        }
+
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background: var(--neu-base);
+            box-shadow: 6px 6px 12px var(--neu-shadow-dark), -6px -6px 12px var(--neu-shadow-light);
+            color: var(--text-main);
+            border-right: 3px solid var(--accent-cyan);
+            border-radius: var(--neu-radius-md) 0 var(--neu-radius-md) var(--neu-radius-md);
+        }
+
+        .assistant-message {
+            align-self: flex-start;
+            background: var(--neu-base);
+            box-shadow: inset 4px 4px 8px var(--neu-shadow-dark), inset -4px -4px 8px var(--neu-shadow-light);
+            border-left: 3px solid var(--accent-cyan);
+            border-radius: 0 var(--neu-radius-md) var(--neu-radius-md) var(--neu-radius-md);
+        }
+
+        .assistant-prefix {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+        }
+
+        .timestamp {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            display: block;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+            align-self: flex-start;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        #input-area {
+            padding: 24px;
+            background: var(--neu-base);
+            display: flex;
+            gap: 16px;
+            z-index: 10;
+        }
+
+        #user-input {
+            flex: 1;
+            background: var(--neu-base);
+            border: none;
+            box-shadow: inset 4px 4px 8px var(--neu-shadow-dark), inset -4px -4px 8px var(--neu-shadow-light);
+            border-radius: var(--neu-radius-sm);
+            padding: 16px;
+            color: var(--text-main);
+            font-family: 'Sora', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        #user-input:focus {
+            outline: none;
+            box-shadow: inset 4px 4px 8px var(--neu-shadow-dark), inset -4px -4px 8px var(--neu-shadow-light), 0 0 0 2px var(--accent-cyan);
+        }
+
+        #send-btn {
+            background: var(--neu-base);
+            color: var(--accent-cyan);
+            border: none;
+            box-shadow: 6px 6px 12px var(--neu-shadow-dark), -6px -6px 12px var(--neu-shadow-light);
+            border-radius: var(--neu-radius-sm);
+            padding: 0 32px;
+            font-weight: 700;
+            font-family: 'Sora', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        #send-btn:hover {
+            box-shadow: 8px 8px 16px var(--neu-shadow-dark), -8px -8px 16px var(--neu-shadow-light);
+            color: #4e5340;
+        }
+
+        #send-btn:active {
+            box-shadow: inset 4px 4px 8px var(--neu-shadow-dark), inset -4px -4px 8px var(--neu-shadow-light);
+            transform: scale(0.98);
+        }
+
+        #send-btn:disabled {
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+            background: transparent;
+            border: 1px solid var(--neu-shadow-dark);
+        }
+
+        .error-banner {
+            background: rgba(255, 77, 77, 0.1);
+            border: 1px solid var(--error-red);
+            color: var(--error-red);
+            padding: 12px;
+            border-radius: 4px;
+            margin: 20px;
+            font-size: 0.85rem;
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 4px;
+            margin: 8px 0;
+            overflow-x: auto;
+            border-left: 2px solid var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <span class="logo-text">⚙ HelpDesk AI</span>
+            </div>
+            <div class="subtitle">Powered by local AI · Ollama · Terminal v1.0.4</div>
+        </header>
+
+        <div id="chat-window">
+            <!-- Messages will appear here -->
+        </div>
+
+        <div id="error-container"></div>
+
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Describe your tech issue..." autocomplete="off">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const errorContainer = document.getElementById('error-container');
+
+        let messageHistory = [];
+
+        function appendMessage(role, content) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}-message`;
+            
+            if (role === 'assistant') {
+                const prefix = document.createElement('div');
+                prefix.className = 'assistant-prefix';
+                prefix.innerHTML = '<span>🤖</span> HELP DESK TERMINAL';
+                msgDiv.appendChild(prefix);
+            }
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+            contentDiv.innerText = content;
+            msgDiv.appendChild(contentDiv);
+
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            msgDiv.appendChild(timestamp);
+
+            chatWindow.appendChild(msgDiv);
+            scrollToBottom();
+            return contentDiv;
+        }
+
+        function scrollToBottom() {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.id = 'typing-indicator';
+            indicator.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+            chatWindow.appendChild(indicator);
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        function showError(message) {
+            errorContainer.innerHTML = `<div class="error-banner">⚠ ${message}</div>`;
+            setTimeout(() => {
+                errorContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            userInput.value = '';
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            appendMessage('user', text);
+            messageHistory.push({ role: 'user', content: text });
+
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: messageHistory })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to connect to AI');
+                }
+
+                hideTypingIndicator();
+                const assistantContentDiv = appendMessage('assistant', '');
+                let fullAssistantResponse = '';
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        try {
+                            const data = JSON.parse(line);
+                            if (data.message && data.message.content) {
+                                fullAssistantResponse += data.message.content;
+                                assistantContentDiv.innerText = fullAssistantResponse;
+                                scrollToBottom();
+                            }
+                        } catch (e) {
+                            console.error('Error parsing NDJSON chunk', e);
+                        }
+                    }
+                }
+
+                messageHistory.push({ role: 'assistant', content: fullAssistantResponse });
+
+            } catch (error) {
+                hideTypingIndicator();
+                showError(error.message);
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Focus input on load
+        window.onload = () => userInput.focus();
+    </script>
+</body>
+</html>
